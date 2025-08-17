@@ -1,0 +1,271 @@
+<!DOCTYPE html><html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recensioni Servizio – Demo Semplice</title>
+  <meta name="description" content="Widget semplice di recensioni 1–5 stelle con media, conteggi e percentuali. Nessun backend, tutto in locale." />
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --card: #121823;
+      --muted: #a6b0bf;
+      --text: #e8eef9;
+      --brand: #4ea1ff;
+      --ok: #2ecc71;
+      --warn: #f1c40f;
+      --danger: #e74c3c;
+      --bar: #233044;
+      --ring: #2b3a52;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #182234 0%, #0b0f14 60%);
+      color: var(--text);
+    }
+    .container { max-width: 920px; margin: 32px auto; padding: 24px; }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.0));
+      border: 1px solid var(--ring);
+      border-radius: 18px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      backdrop-filter: blur(4px);
+    }
+    h1 { margin: 0 0 8px; font-weight: 800; letter-spacing: .2px; }
+    p.muted { color: var(--muted); margin-top: 0; }.grid { display: grid; gap: 20px; }
+@media (min-width: 860px){ .grid { grid-template-columns: 1.1fr 1fr; } }
+
+.avg {
+  display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center;
+  padding: 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--ring);
+}
+.avg .score { font-size: 44px; font-weight: 800; line-height: 1; }
+.stars { display: inline-flex; gap: 2px; }
+.star { width: 22px; height: 22px; display: inline-block; mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>') center / contain no-repeat; background: #2d3b53; }
+.star.filled { background: #f6c453; }
+
+.row { display: grid; grid-template-columns: 60px 1fr 50px; align-items: center; gap: 10px; }
+.bar { height: 10px; background: var(--bar); border-radius: 999px; overflow: hidden; border: 1px solid var(--ring); }
+.bar > span { display: block; height: 100%; background: linear-gradient(90deg, #4ea1ff, #9ad4ff); width: 0%; }
+.row small { color: var(--muted); text-align: right; }
+
+.panel { background: var(--card); border: 1px solid var(--ring); border-radius: 14px; padding: 16px; }
+.flex { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+button, .btn {
+  cursor: pointer; border: 1px solid var(--ring); background: #162033; color: var(--text);
+  padding: 10px 14px; border-radius: 12px; font-weight: 600; letter-spacing: .2px;
+  transition: transform .05s ease, background .2s ease, border-color .2s ease;
+}
+button:hover { background: #1c2a44; border-color: #37507a; }
+button:active { transform: translateY(1px); }
+.btn-ghost { background: transparent; }
+
+.select, select, input[type="number"], input[type="text"] {
+  background: #0f1726; border: 1px solid var(--ring); color: var(--text);
+  padding: 10px 12px; border-radius: 12px; outline: none; min-width: 80px;
+}
+
+.totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pill { text-align: center; padding: 10px; border-radius: 12px; background: #0f1626; border: 1px solid var(--ring); }
+.pill .big { font-size: 20px; font-weight: 800; }
+
+footer { margin-top: 24px; color: var(--muted); font-size: 13px; text-align: center; }
+a { color: #9ad4ff; }
+.hint { font-size: 12px; color: var(--muted); }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card" role="region" aria-label="Pannello recensioni">
+      <h1>Recensioni del Servizio</h1>
+      <p class="muted">Raccolta valutazioni 1–5⭐ con media aggiornata in tempo reale. Dati salvati sul tuo dispositivo (localStorage).</p><div class="grid" id="rating-widgets">
+    <!-- Colonna SX: Media + distribuzione -->
+    <section class="panel" aria-label="Media e distribuzione">
+      <div class="avg" aria-live="polite">
+        <div class="score" id="avgScore">0.0</div>
+        <div>
+          <div class="stars" id="avgStars" aria-hidden="true"></div>
+          <div class="hint" id="avgLabel">Media su 0 recensioni</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px; display:grid; gap:8px;" id="distribution">
+        <!-- Righe 5→1 stelle verranno generate da JS -->
+      </div>
+
+      <div class="totals" style="margin-top:16px;">
+        <div class="pill"><div class="big" id="totalReviews">0</div><div>Totale</div></div>
+        <div class="pill"><div class="big" id="percentPositive">0%</div><div>≥ 4 stelle</div></div>
+        <div class="pill"><div class="big" id="percentReco">0%</div><div>Consiglierebbero</div></div>
+      </div>
+    </section>
+
+    <!-- Colonna DX: Aggiungi recensione -->
+    <section class="panel" aria-label="Aggiungi una recensione">
+      <h3 style="margin-top:0">Lascia una valutazione</h3>
+      <form id="addForm" class="flex" onsubmit="return false;">
+        <label for="starsSel" class="hint">Seleziona stelle</label>
+        <select id="starsSel" aria-label="Stelle">
+          <option value="5">★★★★★ (5)</option>
+          <option value="4">★★★★☆ (4)</option>
+          <option value="3">★★★☆☆ (3)</option>
+          <option value="2">★★☆☆☆ (2)</option>
+          <option value="1">★☆☆☆☆ (1)</option>
+        </select>
+        <input id="comment" type="text" placeholder="(opzionale) Lascia un commento breve" maxlength="140" />
+        <button id="addBtn">Aggiungi</button>
+        <button class="btn-ghost" id="resetBtn" title="Azzera i dati locali">Reset</button>
+      </form>
+
+      <div id="lastComments" style="margin-top:14px; display:grid; gap:8px;"></div>
+    </section>
+  </div>
+
+  <footer>
+    <div class="hint">Suggerimento: per partire con dati reali, modifica l'oggetto <code>INITIAL_COUNTS</code> nel codice oppure importa/esporta JSON.</div>
+  </footer>
+</div>
+
+  </div>  <!-- JSON-LD dinamico per SEO (AggregateRating) -->  <script id="schema" type="application/ld+json">{}</script>  <script>
+    // ======= Impostazioni iniziali =======
+    // Modifica qui se vuoi inizializzare con dati esistenti (es. esportati dal tuo gestionale)
+    const INITIAL_COUNTS = { 1: 2, 2: 3, 3: 6, 4: 18, 5: 31 }; // esempio
+    const SERVICE_NAME = "Il Tuo Servizio";
+
+    // ======= Stato / storage =======
+    const STORAGE_KEY = "rating_widget_v1";
+    const DEFAULT_STATE = {
+      counts: { 1:0, 2:0, 3:0, 4:0, 5:0 },
+      comments: [] // {stars, text, timestamp}
+    };
+
+    function loadState(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        try { return JSON.parse(raw); } catch(e) { console.warn("Storage corrotto, reset", e); }
+      }
+      // primo avvio: copia i dati iniziali
+      const s = structuredClone(DEFAULT_STATE);
+      s.counts = { ...s.counts, ...INITIAL_COUNTS };
+      saveState(s); return s;
+    }
+    function saveState(state){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+    let state = loadState();
+
+    // ======= Helpers =======
+    const $ = sel => document.querySelector(sel);
+    function sumCounts(counts){ return [1,2,3,4,5].reduce((a,k)=>a+(counts[k]||0),0); }
+    function average(counts){
+      const total = sumCounts(counts);
+      if(!total) return 0;
+      const sum = [1,2,3,4,5].reduce((a,k)=>a + k * (counts[k]||0), 0);
+      return sum / total;
+    }
+    function makeStars(container, value){
+      container.innerHTML = "";
+      for(let i=1;i<=5;i++){
+        const s = document.createElement('span');
+        s.className = 'star' + (i <= Math.round(value) ? ' filled' : '');
+        container.appendChild(s);
+      }
+    }
+
+    // ======= UI: distribuzione righe =======
+    const distBox = document.getElementById('distribution');
+    function ensureRows(){
+      if(distBox.childElementCount) return;
+      for(let stars=5; stars>=1; stars--){
+        const row = document.createElement('div'); row.className = 'row'; row.dataset.stars = String(stars);
+        const label = document.createElement('div'); label.textContent = `${stars} ★`;
+        const bar = document.createElement('div'); bar.className = 'bar';
+        const fill = document.createElement('span'); bar.appendChild(fill);
+        const count = document.createElement('small'); count.textContent = '0';
+        row.append(label, bar, count); distBox.appendChild(row);
+      }
+    }
+
+    // ======= Render =======
+    function render(){
+      ensureRows();
+      const counts = state.counts;
+      const total = sumCounts(counts);
+      const avg = average(counts);
+
+      // header
+      document.getElementById('avgScore').textContent = avg.toFixed(1);
+      makeStars(document.getElementById('avgStars'), avg);
+      document.getElementById('avgLabel').textContent = total ? `Media su ${total} recensioni` : 'Nessuna recensione';
+
+      // distribuzione
+      for(const row of distBox.children){
+        const s = Number(row.dataset.stars);
+        const c = counts[s] || 0;
+        row.querySelector('small').textContent = c;
+        const pct = total ? (100 * c / total) : 0;
+        row.querySelector('.bar > span').style.width = pct.toFixed(2) + '%';
+      }
+
+      // pillole statistiche
+      document.getElementById('totalReviews').textContent = String(total);
+      const positive = (counts[4]||0) + (counts[5]||0);
+      document.getElementById('percentPositive').textContent = total ? Math.round(positive*100/total)+"%" : '0%';
+      // logica esempio: raccomanderebbero se stelle >=4
+      document.getElementById('percentReco').textContent = total ? Math.round(positive*100/total)+"%" : '0%';
+
+      // commenti (ultimi 5)
+      const list = document.getElementById('lastComments');
+      list.innerHTML = '';
+      const last = state.comments.slice(-5).reverse();
+      for(const item of last){
+        const div = document.createElement('div');
+        div.className = 'avg';
+        const left = document.createElement('div'); left.className = 'score'; left.style.fontSize='20px'; left.textContent = `${item.stars}★`;
+        const right = document.createElement('div');
+        const s = document.createElement('div'); s.className='stars'; makeStars(s, item.stars);
+        const txt = document.createElement('div'); txt.className='hint';
+        const d = new Date(item.timestamp);
+        txt.textContent = (item.text||'') + (item.text? ' · ' : '') + d.toLocaleString();
+        right.appendChild(s); right.appendChild(txt);
+        div.appendChild(left); div.appendChild(right);
+        list.appendChild(div);
+      }
+
+      // SEO: schema.org AggregateRating
+      const schema = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',               // o 'Service'
+        name: SERVICE_NAME,
+        aggregateRating: {
+          '@type': 'AggregateRating',
+          ratingValue: total ? Number(avg.toFixed(2)) : 0,
+          reviewCount: total
+        }
+      };
+      document.getElementById('schema').textContent = JSON.stringify(schema);
+    }
+
+    // ======= Eventi =======
+    document.getElementById('addBtn').addEventListener('click', () => {
+      const stars = Number(document.getElementById('starsSel').value);
+      const text = document.getElementById('comment').value.trim();
+      state.counts[stars] = (state.counts[stars]||0) + 1;
+      if(text) state.comments.push({ stars, text, timestamp: Date.now() });
+      saveState(state); render();
+      document.getElementById('comment').value = '';
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if(!confirm('Sicuro di voler azzerare i dati locali?')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      state = loadState(); render();
+    });
+
+    // ======= Avvio =======
+    render();
+
+    // ======= Import/Export rapidi via console (facoltativi) =======
+    // window.exportRatings = () => JSON.stringify(state);
+    // window.importRatings = (json) => { state = JSON.parse(json); saveState(state); render(); };
+  </script></body>
+</html>
